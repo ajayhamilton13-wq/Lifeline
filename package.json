@@ -1,0 +1,30 @@
+{
+  "name": "lifeline",
+  "version": "1.0.0",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "build:apk": "eas build -p android --profile preview"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "11.4.1",
+    "expo": "~54.0.0",
+    "expo-background-task": "~1.0.8",
+    "expo-location": "~19.0.7",
+    "expo-notifications": "~0.32.12",
+    "expo-sms": "~14.0.7",
+    "expo-status-bar": "~3.0.8",
+    "expo-task-manager": "~14.0.7",
+    "firebase": "^12.4.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-webview": "13.15.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0"
+  }
+}

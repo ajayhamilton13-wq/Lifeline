@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function validLoc(d) {
+      return d.lat is number && d.lng is number
+        && d.lat >= -90 && d.lat <= 90 && d.lng >= -180 && d.lng <= 180;
+    }
+    // Allows items made offline up to a day ago to upload later.
+    function recent(t) {
+      return t is timestamp
+        && t <= request.time + duration.value(5, 'm')
+        && t >= request.time - duration.value(1, 'd');
+    }
+    function shortText(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Outage reports. Anyone signed in can read; you can only post as yourself.
+    match /reports/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.type in ['power', 'water', 'low_pressure']
+        && request.resource.data.status in ['out', 'restored']
+        && validLoc(request.resource.data)
+        && recent(request.resource.data.createdAt)
+        && shortText(request.resource.data.name, 60)
+        && (!('note' in request.resource.data) || shortText(request.resource.data.note, 280));
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Area chat messages.
+    match /messages/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 1000
+        && shortText(request.resource.data.name, 60)
+        && validLoc(request.resource.data)
+        && recent(request.resource.data.createdAt);
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // One resource listing per person, stored under their own user ID.
+    match /resources/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 20
+        && validLoc(request.resource.data);
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
