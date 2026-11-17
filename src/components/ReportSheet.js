@@ -1,38 +1,41 @@
-import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
+import { colors, radii, tint, type } from '../theme';
 import { TYPES } from '../geo';
 import { useApp } from '../AppContext';
-import { Button, s } from './ui';
+import { Button, Field } from './ui';
 
-/** Bottom sheet for reporting an outage (or that service is back). */
+/** Bottom sheet for reporting an outage, or that service is back. */
 export default function ReportSheet({ visible, onClose, presetType, presetStatus = 'out' }) {
   const { submitReport, location } = useApp();
-  const [type, setType] = useState(presetType || 'power');
+  const [kind, setKind] = useState(presetType || 'power');
   const [status, setStatus] = useState(presetStatus);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
-      setType(presetType || 'power');
+      setKind(presetType || 'power');
       setStatus(presetStatus);
       setNote('');
     }
   }, [visible, presetType, presetStatus]);
 
+  const isOut = status === 'out';
+  const actionColor = isOut ? colors.accent : colors.ok;
+
   async function send() {
     setBusy(true);
     try {
-      const res = await submitReport({ type, status, note });
+      const res = await submitReport({ type: kind, status, note });
       onClose();
       if (!res.cloud) {
         Alert.alert(
           'Saved offline',
           res.direct > 0
-            ? `Sent to ${res.direct} nearby phone${res.direct > 1 ? 's' : ''}. It will upload when you're back online.`
-            : "No internet and no phones nearby right now. It will send automatically when you're back online.",
+            ? `Passed to ${res.direct} nearby phone${res.direct > 1 ? 's' : ''}. It uploads automatically when you're back online.`
+            : "No internet or nearby phones right now. It will send automatically when you're back online.",
         );
       }
     } catch (e) {
@@ -43,64 +46,95 @@ export default function ReportSheet({ visible, onClose, presetType, presetStatus
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable style={{ flex: 1 }} onPress={onClose} />
-        <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 18, paddingBottom: 30 }}>
-          <Text style={[s.title, { fontSize: 20 }]}>What's happening?</Text>
-          {!location ? <Text style={[s.muted, { color: colors.power, marginTop: 6 }]}>Finding your location…</Text> : null}
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }} onPress={onClose} />
+        <View
+          style={{
+            backgroundColor: colors.card, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20,
+            paddingTop: 10, paddingBottom: 30, borderWidth: 1, borderColor: colors.borderStrong,
+          }}
+        >
+          <View style={{ alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderStrong, marginBottom: 18 }} />
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-            {['out', 'restored'].map((st) => (
-              <Pressable
-                key={st}
-                onPress={() => setStatus(st)}
-                style={{
-                  flex: 1, padding: 10, borderRadius: 12, alignItems: 'center',
-                  backgroundColor: status === st ? (st === 'out' ? colors.accent : colors.ok) : colors.cardAlt,
-                }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '700' }}>{st === 'out' ? 'Problem now' : "It's back"}</Text>
-              </Pressable>
-            ))}
+          <Text style={type.overline}>{location ? 'At your current location' : 'Finding your location…'}</Text>
+          <Text style={[type.title, { marginTop: 4 }]}>{isOut ? 'What went out?' : 'What came back?'}</Text>
+
+          {/* Segmented control */}
+          <View style={{ flexDirection: 'row', backgroundColor: colors.bgRaised, borderRadius: radii.md, padding: 4, marginTop: 18, borderWidth: 1, borderColor: colors.border }}>
+            {[
+              { key: 'out', label: 'Outage now', icon: 'alert-circle' },
+              { key: 'restored', label: "It's back", icon: 'checkmark-circle' },
+            ].map((o) => {
+              const on = status === o.key;
+              const c = o.key === 'out' ? colors.accent : colors.ok;
+              return (
+                <Pressable
+                  key={o.key}
+                  onPress={() => setStatus(o.key)}
+                  style={{
+                    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 11,
+                    borderRadius: radii.sm + 2, backgroundColor: on ? tint(c, 0.18) : 'transparent',
+                  }}
+                >
+                  <Ionicons name={on ? o.icon : `${o.icon}-outline`} size={17} color={on ? c : colors.muted} />
+                  <Text style={{ color: on ? colors.text : colors.muted, fontWeight: '800', marginLeft: 6 }}>{o.label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          <View style={{ marginTop: 12, gap: 8 }}>
-            {Object.entries(TYPES).map(([key, t]) => (
-              <Pressable
-                key={key}
-                onPress={() => setType(key)}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14,
-                  backgroundColor: type === key ? t.color + '33' : colors.cardAlt,
-                  borderWidth: 1.5, borderColor: type === key ? t.color : 'transparent',
-                }}
-              >
-                <Ionicons name={t.icon} size={22} color={t.color} />
-                <Text style={[s.text, { marginLeft: 12, fontWeight: '700' }]}>
-                  {status === 'restored' ? `${t.short} is back` : t.label}
-                </Text>
-              </Pressable>
-            ))}
+          {/* Utility picker */}
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+            {Object.entries(TYPES).map(([key, t]) => {
+              const on = kind === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => setKind(key)}
+                  style={({ pressed }) => [
+                    {
+                      flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 6, borderRadius: radii.lg,
+                      backgroundColor: on ? tint(t.color, 0.14) : colors.bgRaised, borderWidth: 1.5,
+                      borderColor: on ? t.color : colors.border,
+                    },
+                    pressed && { transform: [{ scale: 0.97 }] },
+                  ]}
+                >
+                  <View
+                    style={{
+                      width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: on ? t.color : tint(t.color, 0.14),
+                    }}
+                  >
+                    <Ionicons name={t.icon} size={24} color={on ? colors.bg : t.color} />
+                  </View>
+                  <Text style={{ color: on ? colors.text : colors.textSoft, fontWeight: '800', fontSize: 13, marginTop: 10, textAlign: 'center' }}>
+                    {t.short}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          <Text style={s.label}>Details (optional)</Text>
-          <TextInput
+          <Field
+            label="Details (optional)"
+            icon="create-outline"
             value={note}
             onChangeText={setNote}
-            placeholder="e.g. Whole street out since 6pm"
-            placeholderTextColor={colors.muted}
-            style={s.input}
+            placeholder={isOut ? 'e.g. Whole street out since 6pm' : 'e.g. Back on at 9pm'}
             maxLength={280}
+            style={{ marginTop: 18 }}
           />
+
           <Button
-            title={status === 'out' ? 'Send report' : 'Mark as back'}
-            color={status === 'out' ? colors.accent : colors.ok}
-            icon="send"
+            title={isOut ? `Report ${TYPES[kind].short.toLowerCase()} outage` : `${TYPES[kind].short} is back`}
+            icon={isOut ? 'megaphone' : 'checkmark-done'}
+            color={actionColor}
             onPress={send}
             loading={busy}
             disabled={!location}
-            style={{ marginTop: 16 }}
+            style={{ marginTop: 20 }}
           />
         </View>
       </KeyboardAvoidingView>
