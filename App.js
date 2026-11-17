@@ -7,6 +7,8 @@ import { AppProvider } from './src/AppContext';
 import AuthScreen from './src/screens/AuthScreen';
 import MainTabs from './src/MainTabs';
 import { colors } from './src/theme';
+import { UpdateProvider } from './src/updater';
+import UpdateSheet from './src/components/UpdateSheet';
 
 export default function App() {
   const [user, setUser] = useState(undefined);
@@ -15,6 +17,7 @@ export default function App() {
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u || null)), []);
 
   return (
+    <UpdateProvider>
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 44 }}>
       <StatusBar style="light" />
       {user === undefined ? (
@@ -28,6 +31,8 @@ export default function App() {
       ) : (
         <AuthScreen onNameSet={setNewName} />
       )}
+      <UpdateSheet />
     </View>
+    </UpdateProvider>
   );
 }

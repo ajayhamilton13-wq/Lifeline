@@ -49,3 +49,16 @@ src/background.js       background outage checks
 modules/lifeline-mesh/  native Nearby Connections module (Android)
 firestore.rules         database security rules
 ```
+
+## Shipping an update (in-app updates)
+
+Lifeline checks this repo's **latest GitHub Release** whenever it opens. If the release tag is newer than the installed version and has an `.apk` attached, the app shows an **Update available** prompt, downloads the APK and opens Android's installer. People can also tap **Me → Check for updates**.
+
+To release a new version:
+
+1. In `app.json`, raise `version` (for example `1.1.0` → `1.2.0`) and `android.versionCode` (for example `2` → `3`).
+2. Build: `eas build -p android --profile preview`.
+3. Download the `.apk` from the Expo build page.
+4. On GitHub, go to **Releases → Draft a new release**. Set the tag to `v1.2.0` to match the version, write what's new in the description and attach the `.apk`. Then publish.
+
+Every build must be signed with the same EAS keystore, which happens automatically. Otherwise Android refuses to install the update over the old app.

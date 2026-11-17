@@ -3,7 +3,7 @@
     "name": "Lifeline",
     "slug": "lifeline",
     "owner": "ajay5",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.ajay5.lifeline",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B1220"
@@ -29,7 +29,8 @@
         "NEARBY_WIFI_DEVICES",
         "ACCESS_WIFI_STATE",
         "CHANGE_WIFI_STATE",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "REQUEST_INSTALL_PACKAGES"
       ]
     },
     "plugins": [
@@ -46,6 +47,11 @@
         }
       ],
       "expo-background-task"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2a9c6a6c-9878-4225-8e88-551d47284fd5"
+      }
+    }
   }
 }
