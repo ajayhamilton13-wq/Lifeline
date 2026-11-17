@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail,
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { saveUser } from '../data';
-import { colors } from '../theme';
-import { Button, s } from '../components/ui';
+import { colors, radii, tint, type } from '../theme';
+import { Button, Field } from '../components/ui';
 
 const messages = {
   'auth/invalid-email': 'That email address does not look right.',
@@ -17,17 +17,47 @@ const messages = {
   'auth/network-request-failed': 'No internet. You need a connection to sign in the first time.',
 };
 
+const FEATURES = [
+  { icon: 'flash', color: colors.power, text: 'Live map of outages near you' },
+  { icon: 'git-network', color: colors.mesh, text: 'Message without Wi-Fi or data' },
+  { icon: 'hand-left', color: colors.share, text: 'Share what you have in a crisis' },
+];
+
+function Logo() {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(v, { toValue: 1, duration: 2200, easing: Easing.out(Easing.quad), useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [v]);
+  return (
+    <View style={{ width: 96, height: 96, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View
+        style={{
+          position: 'absolute', width: 96, height: 96, borderRadius: 32, borderWidth: 2, borderColor: colors.accent,
+          opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] }),
+          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.35] }) }],
+        }}
+      />
+      <View style={{ width: 80, height: 80, borderRadius: 26, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="pulse" size={46} color="#fff" />
+      </View>
+    </View>
+  );
+}
+
 export default function AuthScreen({ onNameSet }) {
   const [mode, setMode] = useState('signup');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const signup = mode === 'signup';
 
   async function submit() {
     setBusy(true);
     try {
-      if (mode === 'signup') {
+      if (signup) {
         if (!name.trim()) throw { code: 'name' };
         const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
         await updateProfile(cred.user, { displayName: name.trim() });
@@ -55,41 +85,45 @@ export default function AuthScreen({ onNameSet }) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }} keyboardShouldPersistTaps="handled">
-        <View style={{ alignItems: 'center', marginBottom: 28 }}>
-          <View style={{ width: 84, height: 84, borderRadius: 24, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="pulse" size={50} color="#fff" />
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingTop: 36 }} keyboardShouldPersistTaps="handled">
+        <Logo />
+        <Text style={[type.display, { marginTop: 22 }]}>Lifeline</Text>
+        <Text style={[type.body, { marginTop: 6, fontSize: 16 }]}>
+          Know when power and water go out near you. Stay connected when the internet doesn't.
+        </Text>
+
+        {signup ? (
+          <View style={{ marginTop: 22, gap: 10 }}>
+            {FEATURES.map((f) => (
+              <View key={f.text} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: tint(f.color, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={f.icon} size={16} color={f.color} />
+                </View>
+                <Text style={{ color: colors.textSoft, fontWeight: '600', marginLeft: 12, fontSize: 14 }}>{f.text}</Text>
+              </View>
+            ))}
           </View>
-          <Text style={{ color: colors.text, fontSize: 34, fontWeight: '900', marginTop: 14 }}>Lifeline</Text>
-          <Text style={[s.muted, { textAlign: 'center', marginTop: 6, fontSize: 15 }]}>
-            Know when power and water go out near you. Stay in touch when the internet doesn't.
-          </Text>
+        ) : null}
+
+        <View style={{ marginTop: 28, padding: 18, borderRadius: radii.xl, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+          <Text style={type.heading}>{signup ? 'Create your account' : 'Welcome back'}</Text>
+          {signup ? <Field label="Name" icon="person-outline" value={name} onChangeText={setName} placeholder="Your first name" maxLength={40} /> : null}
+          <Field label="Email" icon="mail-outline" value={email} onChangeText={setEmail} placeholder="you@gmail.com" autoCapitalize="none" keyboardType="email-address" />
+          <Field label="Password" icon="lock-closed-outline" value={password} onChangeText={setPassword} placeholder="At least 6 characters" secureTextEntry />
+          <Button title={signup ? 'Create account' : 'Sign in'} icon={signup ? 'arrow-forward' : 'log-in-outline'} onPress={submit} loading={busy} style={{ marginTop: 4 }} />
+          {!signup ? (
+            <Pressable onPress={reset} style={{ alignItems: 'center' }} hitSlop={8}>
+              <Text style={{ color: colors.muted, fontWeight: '600' }}>Forgot password?</Text>
+            </Pressable>
+          ) : null}
         </View>
 
-        {mode === 'signup' ? (
-          <>
-            <Text style={s.label}>Your name</Text>
-            <TextInput value={name} onChangeText={setName} placeholder="First name" placeholderTextColor={colors.muted} style={s.input} maxLength={40} />
-          </>
-        ) : null}
-        <Text style={s.label}>Email</Text>
-        <TextInput value={email} onChangeText={setEmail} placeholder="you@gmail.com" placeholderTextColor={colors.muted} style={s.input} autoCapitalize="none" keyboardType="email-address" />
-        <Text style={s.label}>Password</Text>
-        <TextInput value={password} onChangeText={setPassword} placeholder="At least 6 characters" placeholderTextColor={colors.muted} style={s.input} secureTextEntry />
-
-        <Button title={mode === 'signup' ? 'Create account' : 'Sign in'} onPress={submit} loading={busy} style={{ marginTop: 22 }} />
-
-        <Pressable onPress={() => setMode(mode === 'signup' ? 'signin' : 'signup')} style={{ marginTop: 18, alignItems: 'center' }}>
-          <Text style={{ color: colors.text }}>
-            {mode === 'signup' ? 'Already have an account? ' : 'New here? '}
-            <Text style={{ color: colors.accent, fontWeight: '700' }}>{mode === 'signup' ? 'Sign in' : 'Create account'}</Text>
+        <Pressable onPress={() => setMode(signup ? 'signin' : 'signup')} style={{ marginTop: 20, alignItems: 'center', padding: 8 }}>
+          <Text style={{ color: colors.textSoft }}>
+            {signup ? 'Already have an account? ' : 'New to Lifeline? '}
+            <Text style={{ color: colors.accent, fontWeight: '800' }}>{signup ? 'Sign in' : 'Create one'}</Text>
           </Text>
         </Pressable>
-        {mode === 'signin' ? (
-          <Pressable onPress={reset} style={{ marginTop: 12, alignItems: 'center' }}>
-            <Text style={s.muted}>Forgot password?</Text>
-          </Pressable>
-        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
